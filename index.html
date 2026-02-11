@@ -79,7 +79,7 @@
 
             try {
                 // 1. 上传
-                const upRes = await fetch('/functions/upload', {
+                const upRes = await fetch('/upload', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ url: url })
@@ -87,7 +87,7 @@
                 if (!upRes.ok) throw new Error("上传失败");
 
                 // 2. 获取
-                const getRes = await fetch('/functions/random');
+                const getRes = await fetch('/random');
                 const data = await getRes.json();
 
                 if (data.link) {
@@ -105,4 +105,5 @@
         }
     </script>
 </body>
+
 </html>
