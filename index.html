@@ -1,105 +1,158 @@
+
 <!DOCTYPE html>
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>问卷互填池</title>
+    <title>互助问卷池</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; padding: 40px 20px; background: #f4f6f8; color: #333; }
-        .box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; }
-        h1 { color: #0052d9; margin-bottom: 10px; }
-        p { color: #666; margin-bottom: 30px; }
-        
-        .input-group { margin-bottom: 15px; text-align: left; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; }
-        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; transition: 0.3s; }
-        input:focus { border-color: #0052d9; outline: none; }
+        /* 这里还是用之前的样式，或者你自己美化一下 */
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 20px;
+            background: #f4f6f8;
+        }
 
-        button { width: 100%; padding: 14px; background: #0052d9; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px;}
-        button:hover { background: #003bb3; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
+        .box {
+            background: white;
+            padding: 30px;
+            max-width: 600px;
+            margin: 0 auto;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
 
-        #result { margin-top: 30px; text-align: left; display: none; background: #f0f8ff; padding: 20px; border-radius: 8px; border: 1px solid #d9eaff; }
-        .link-item { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #ccc; }
-        .link-item:last-child { border-bottom: none; }
-        .link-item a { color: #0052d9; text-decoration: none; word-break: break-all; }
-        .link-item a:hover { text-decoration: underline; }
-        .tip { font-size: 0.85em; color: #888; margin-top: 5px; }
+        input {
+            padding: 10px;
+            width: 70%;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #0052d9;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+            button:disabled {
+                background: #ccc;
+            }
+
+        .task-item {
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 8px;
+            text-align: left;
+        }
+
+        .task-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-check {
+            background: #2ba471;
+            display: none;
+        }
+        /* 默认隐藏确认按钮 */
     </style>
 </head>
 <body>
-
     <div class="box">
-        <h1>🚀 问卷互填池</h1>
-        <p>你帮别人填的越多，你的问卷展示给别人的机会就越多！</p>
-        
-        <div class="input-group">
-            <label>你的问卷链接：</label>
-            <input type="url" id="myUrl" placeholder="https://...">
-        </div>
+        <h1>⚖️ 积分制互填</h1>
+        <p>请先发送链接，随后领取链接，每填完一个，你的链接积分+1，积分越高，你的链接给其他人报告的概论也就越大。</p>
 
-        <div class="input-group">
-            <label>这次你想帮填几份？(1-10)</label>
-            <input type="number" id="wantCount" value="3" min="1" max="10">
-            <div class="tip">建议填 3-5 份，这样你的链接也会被优先展示给 3-5 个人。</div>
-        </div>
+        <input type="url" id="myUrl" placeholder="输入你的问卷链接">
+        <button onclick="getTasks()" id="mainBtn">开始互填</button>
 
-        <button onclick="startExchange()" id="btn">提交并获取互填链接</button>
-
-        <div id="result"></div>
+        <div id="taskList"></div>
     </div>
 
     <script>
-        async function startExchange() {
-            const urlInput = document.getElementById('myUrl').value;
-            const countInput = document.getElementById('wantCount').value;
-            const resultDiv = document.getElementById('result');
-            const btn = document.getElementById('btn');
+        let myCurrentUrl = "";
 
-            if (!urlInput) return alert("请填写你的链接");
-            
-            btn.disabled = true;
-            btn.innerText = "正在匹配中...";
-            resultDiv.style.display = 'none';
+        async function getTasks() {
+            const urlInput = document.getElementById('myUrl');
+            const list = document.getElementById('taskList');
+
+            if (!urlInput.value) return alert("请输入你的链接");
+            myCurrentUrl = urlInput.value;
+
+            document.getElementById('mainBtn').disabled = true;
+            list.innerHTML = "<p>正在匹配...</p>";
 
             try {
-                // 请求我们新的后端函数
+                // 1. 获取任务
                 const res = await fetch('/exchange', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        url: urlInput,
-                        count: countInput
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: myCurrentUrl })
+                });
+                const data = await res.json();
+
+                // 2. 渲染列表
+                list.innerHTML = "";
+                if (data.links.length === 0) {
+                    list.innerHTML = "<p>暂时没有其他问卷。</p>";
+                    return;
+                }
+
+                data.links.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'task-item';
+                    div.innerHTML = `
+                            <div>🔗 问卷ID: ${item.id}</div>
+                            <div class="task-actions">
+                                <a href="${item.url}" target="_blank" onclick="showConfirm(this)" class="link-btn">
+                                    <button>👉 第一步：去填写</button>
+                                </a>
+                                <button class="btn-check" onclick="confirmTask(${item.id}, this)">✅ 第二步：我填完了，加分</button>
+                            </div>
+                        `;
+                    list.appendChild(div);
+                });
+
+            } catch (e) {
+                alert("错误：" + e.message);
+            }
+        }
+
+        // 只有点击了链接，才显示确认按钮
+        function showConfirm(el) {
+            // 找到旁边的确认按钮，让它显示出来
+            const confirmBtn = el.nextElementSibling;
+            confirmBtn.style.display = 'inline-block';
+        }
+
+        async function confirmTask(targetId, btn) {
+            btn.innerText = "处理中...";
+            btn.disabled = true;
+
+            try {
+                await fetch('/confirm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        my_url: myCurrentUrl,
+                        target_id: targetId
                     })
                 });
 
-                const data = await res.json();
+                btn.innerText = "已完成 (+1分)";
+                btn.style.background = "#ccc";
 
-                if (data.error) throw new Error(data.error);
-
-                // 显示结果
-                let html = `<h3>✅ 提交成功！请填写以下 ${data.links.length} 个问卷：</h3>`;
-                
-                if (data.links.length === 0) {
-                    html += `<p style="color:red">目前库里没有其他链接，你是第一个！稍后别人上传时会优先看到你的链接。</p>`;
-                } else {
-                    data.links.forEach((link, index) => {
-                        html += `
-                        <div class="link-item">
-                            <span>${index + 1}. </span>
-                            <a href="${link.url}" target="_blank">${link.url}</a>
-                        </div>`;
-                    });
-                }
-                
-                resultDiv.innerHTML = html;
-                resultDiv.style.display = 'block';
-
-            } catch (error) {
-                alert("出错了：" + error.message);
-            } finally {
+            } catch (e) {
+                alert("失败，请重试");
                 btn.disabled = false;
-                btn.innerText = "提交并获取互填链接";
             }
         }
     </script>
