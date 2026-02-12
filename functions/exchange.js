@@ -1,37 +1,48 @@
-// ¼ÇµÃÌæ»»ÏÂÃæµÄÁ½¸ö±äÁ¿£¡
-const SUPABASE_URL = 'https://bujndshnjgabkndhijcs.supabase.co'; // ÌîÄãµÄ Project URL
-const SUPABASE_KEY = 'sb_publishable_7iBhqfflYvpWg9iZqY7QIg_MtGkU1fX';                // ÌîÄãµÄ anon Key
-
+// è®°å¾—æ›¿æ¢ä¸‹é¢çš„ä¸¤ä¸ªå˜é‡ï¼
+const SUPABASE_URL = 'https://bujndshnjgabkndhijcs.supabase.co'; // å¡«ä½ çš„ Project URL
+const SUPABASE_KEY = 'sb_publishable_7iBhqfflYvpWg9iZqY7QIg_MtGkU1fX';                // å¡«ä½ çš„ anon Key
+      
 
 export async function onRequest(context) {
-    const { request } = context;
-    if (request.method !== "POST") return new Response("Error", { status: 405 });
+  const { request } = context;
+  if (request.method !== "POST") return new Response("Error", { status: 405 });
 
-    try {
-        const body = await request.json();
-        const myUrl = body.url;
-        // ÏŞÖÆÒ»´Î×î¶àÈ¡ 5 ¸ö£¬Ì°¶à½À²»ÀÃ
-        const wantCount = 5;
+  try {
+    const body = await request.json();
+    const myUrl = body.url;
+    const wantCount = 5; 
 
-        if (!myUrl || !myUrl.startsWith('http')) {
-            return new Response(JSON.stringify({ error: "ÎŞĞ§µÄÁ´½Ó" }), { status: 400 });
-        }
+    const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/exchange_links`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ my_url: myUrl, want_count: wantCount })
+    });
 
-        // µ÷ÓÃÊı¾İ¿âº¯Êı exchange_links
-        const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/exchange_links`, {
-            method: 'POST',
-            headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ my_url: myUrl, want_count: wantCount })
+    const result = await dbRes.json();
+
+    // --- æ ¸å¿ƒä¿®å¤ï¼šæ£€æŸ¥è¿”å›çš„æ˜¯ä¸æ˜¯æ•°ç»„ ---
+    if (!Array.isArray(result)) {
+        // å¦‚æœä¸æ˜¯æ•°ç»„ï¼Œè¯´æ˜æ•°æ®åº“æŠ¥é”™äº†
+        console.error("Database Error:", result);
+        return new Response(JSON.stringify({ error: result.message || "æ•°æ®åº“è°ƒç”¨å¤±è´¥", links: [] }), { 
+            status: 200, // ä¾ç„¶ç»™ 200ï¼Œä½†å¸¦ä¸Šé”™è¯¯ä¿¡æ¯
+            headers: { "Content-Type": "application/json" } 
         });
-
-        const data = await dbRes.json();
-        return new Response(JSON.stringify({ links: data }), { headers: { "Content-Type": "application/json" } });
-
-    } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
+
+    // å¦‚æœæ˜¯æ•°ç»„ï¼Œæ­£å¸¸è¿”å›
+    return new Response(JSON.stringify({ links: result }), { 
+        headers: { "Content-Type": "application/json" } 
+    });
+
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message, links: [] }), { 
+        status: 500, 
+        headers: { "Content-Type": "application/json" } 
+    });
+  }
 }
