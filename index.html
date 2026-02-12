@@ -1,109 +1,107 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>链接漂流瓶</title>
+    <title>问卷互填池</title>
     <style>
-        body {
-            font-family: sans-serif;
-            text-align: center;
-            padding: 50px;
-            background: #f0f2f5;
-        }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; padding: 40px 20px; background: #f4f6f8; color: #333; }
+        .box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; }
+        h1 { color: #0052d9; margin-bottom: 10px; }
+        p { color: #666; margin-bottom: 30px; }
+        
+        .input-group { margin-bottom: 15px; text-align: left; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; transition: 0.3s; }
+        input:focus { border-color: #0052d9; outline: none; }
 
-        .box {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            max-width: 500px;
-            margin: 0 auto;
-        }
+        button { width: 100%; padding: 14px; background: #0052d9; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px;}
+        button:hover { background: #003bb3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
 
-        input {
-            padding: 10px;
-            width: 70%;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-
-        button {
-            padding: 10px 20px;
-            background: #0052d9;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-            button:hover {
-                background: #003bb3;
-            }
-
-        #result {
-            margin-top: 20px;
-            padding: 15px;
-            background: #e8f4ff;
-            border-radius: 5px;
-            display: none;
-        }
-
-        a {
-            color: #0052d9;
-            font-weight: bold;
-        }
+        #result { margin-top: 30px; text-align: left; display: none; background: #f0f8ff; padding: 20px; border-radius: 8px; border: 1px solid #d9eaff; }
+        .link-item { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #ccc; }
+        .link-item:last-child { border-bottom: none; }
+        .link-item a { color: #0052d9; text-decoration: none; word-break: break-all; }
+        .link-item a:hover { text-decoration: underline; }
+        .tip { font-size: 0.85em; color: #888; margin-top: 5px; }
     </style>
 </head>
 <body>
-    <div class="box">
-        <h1>🔗 链接交换</h1>
-        <p>输入你的链接，随机交换一个别人的链接。</p>
 
-        <input type="url" id="myUrl" placeholder="https://example.com">
-        <button onclick="exchange()">交换</button>
+    <div class="box">
+        <h1>🚀 问卷互填池</h1>
+        <p>你帮别人填的越多，你的问卷展示给别人的机会就越多！</p>
+        
+        <div class="input-group">
+            <label>你的问卷链接：</label>
+            <input type="url" id="myUrl" placeholder="https://...">
+        </div>
+
+        <div class="input-group">
+            <label>这次你想帮填几份？(1-10)</label>
+            <input type="number" id="wantCount" value="3" min="1" max="10">
+            <div class="tip">建议填 3-5 份，这样你的链接也会被优先展示给 3-5 个人。</div>
+        </div>
+
+        <button onclick="startExchange()" id="btn">提交并获取互填链接</button>
 
         <div id="result"></div>
     </div>
 
     <script>
-        async function exchange() {
-            const input = document.getElementById('myUrl');
+        async function startExchange() {
+            const urlInput = document.getElementById('myUrl').value;
+            const countInput = document.getElementById('wantCount').value;
             const resultDiv = document.getElementById('result');
-            const url = input.value;
+            const btn = document.getElementById('btn');
 
-            if (!url) return alert("请先输入网址");
-
-            resultDiv.style.display = 'block';
-            resultDiv.innerText = "正在交换中...";
+            if (!urlInput) return alert("请填写你的链接");
+            
+            btn.disabled = true;
+            btn.innerText = "正在匹配中...";
+            resultDiv.style.display = 'none';
 
             try {
-                // 1. 上传
-                const upRes = await fetch('/upload', {
+                // 请求我们新的后端函数
+                const res = await fetch('/exchange', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ url: url })
+                    body: JSON.stringify({ 
+                        url: urlInput,
+                        count: countInput
+                    })
                 });
-                if (!upRes.ok) throw new Error("上传失败");
 
-                // 2. 获取
-                const getRes = await fetch('/random');
-                const data = await getRes.json();
+                const data = await res.json();
 
-                if (data.link) {
-                    resultDiv.innerHTML = `交换成功！去看看这个：<br><br><a href="${data.link}" target="_blank">${data.link}</a>`;
+                if (data.error) throw new Error(data.error);
+
+                // 显示结果
+                let html = `<h3>✅ 提交成功！请填写以下 ${data.links.length} 个问卷：</h3>`;
+                
+                if (data.links.length === 0) {
+                    html += `<p style="color:red">目前库里没有其他链接，你是第一个！稍后别人上传时会优先看到你的链接。</p>`;
                 } else {
-                    resultDiv.innerText = "你是第一个上传的人！暂时没有别人的链接。";
+                    data.links.forEach((link, index) => {
+                        html += `
+                        <div class="link-item">
+                            <span>${index + 1}. </span>
+                            <a href="${link.url}" target="_blank">${link.url}</a>
+                        </div>`;
+                    });
                 }
+                
+                resultDiv.innerHTML = html;
+                resultDiv.style.display = 'block';
 
-                input.value = ''; // 清空输入框
-
-            } catch (e) {
-                resultDiv.innerText = "出错了，请稍后再试。";
-                console.error(e);
+            } catch (error) {
+                alert("出错了：" + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "提交并获取互填链接";
             }
         }
     </script>
 </body>
-
 </html>
