@@ -138,20 +138,22 @@
             }
 
             // D. 格式没问题，开始渲染列表
-            data.links.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'task-item';
-                div.innerHTML = `
-                    <div style="margin-bottom:8px;"><b>📄 问卷任务 #${item.id}</b></div>
-                    <div class="task-actions">
-                        <a href="${item.url}" target="_blank" onclick="showConfirm(this)">
-                            <button style="background:#0052d9;">第一步：打开问卷</button>
-                        </a>
-                        <button class="btn-check" onclick="confirmTask(${item.id}, this)" style="background:#2ba471; display:none;">第二步：已填完，领积分</button>
-                    </div>
-                `;
-                list.appendChild(div);
-            });
+           data.links.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'task-item';
+    
+    // 注意：这里的 item.id 变成了 item.r_id，item.url 变成了 item.r_url
+    div.innerHTML = `
+        <div style="margin-bottom:8px;"><b>📄 问卷任务 #${item.r_id}</b></div>
+        <div class="task-actions">
+            <a href="${item.r_url}" target="_blank" onclick="showConfirm(this)">
+                <button style="background:#0052d9;">第一步：打开问卷</button>
+            </a>
+            <button class="btn-check" onclick="confirmTask(${item.r_id}, this)" style="background:#2ba471; display:none;">第二步：已填完，领积分</button>
+        </div>
+    `;
+    list.appendChild(div);
+});
             // --- 核心修复结束 ---
 
         } catch (e) {
@@ -199,4 +201,5 @@
 </script>
 </body>
 </html>
+
 
