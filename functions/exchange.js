@@ -19,8 +19,10 @@ export async function onRequest(context) {
         'Authorization': `Bearer ${SUPABASE_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ my_url: myUrl, want_count: wantCount })
-    });
+       body: JSON.stringify({ 
+        my_url: myUrl,       // 这里必须是 my_url，对应 SQL 的参数名
+        want_count: wantCount // 这里必须是 want_count，对应 SQL 的参数名
+    })
 
     const result = await dbRes.json();
 
@@ -46,3 +48,4 @@ export async function onRequest(context) {
     });
   }
 }
+
