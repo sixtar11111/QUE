@@ -1,5 +1,5 @@
-const SUPABASE_URL = 'https://bujndshnjgabkndhijcs.supabase.co'; // ÌîÄãµÄ Project URL
-const SUPABASE_KEY = 'sb_publishable_7iBhqfflYvpWg9iZqY7QIg_MtGkU1fX';                // ÌîÄãµÄ anon Key
+const SUPABASE_URL = 'https://bujndshnjgabkndhijcs.supabase.co'; // Project URL
+const SUPABASE_KEY = 'sb_publishable_7iBhqfflYvpWg9iZqY7QIg_MtGkU1fX';                // anon Key
 
 export async function onRequest(context) {
     const { request } = context;
@@ -8,7 +8,7 @@ export async function onRequest(context) {
     try {
         const body = await request.json();
 
-        // µ÷ÓÃ confirm_fill º¯Êý
+        // ÂµÃ·Ã“Ãƒ confirm_fill ÂºÂ¯ÃŠÃ½
         await fetch(`${SUPABASE_URL}/rest/v1/rpc/confirm_fill`, {
             method: 'POST',
             headers: {
@@ -28,3 +28,4 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
 }
+
