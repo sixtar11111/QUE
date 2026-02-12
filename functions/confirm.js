@@ -8,7 +8,7 @@ export async function onRequest(context) {
     try {
         const body = await request.json();
 
-        // µ÷ÓÃ confirm_fill º¯Êý
+        //
         await fetch(`${SUPABASE_URL}/rest/v1/rpc/confirm_fill`, {
             method: 'POST',
             headers: {
@@ -28,4 +28,5 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
 }
+
 
