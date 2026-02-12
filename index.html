@@ -78,83 +78,125 @@
     </div>
 
     <script>
-        let myCurrentUrl = "";
+    let myCurrentUrl = "";
 
-        async function getTasks() {
-            const urlInput = document.getElementById('myUrl');
-            const list = document.getElementById('taskList');
+    async function getTasks() {
+        const urlInput = document.getElementById('myUrl');
+        const list = document.getElementById('taskList');
+        const mainBtn = document.getElementById('mainBtn');
+        
+        if (!urlInput.value) return alert("请输入你的链接");
+        
+        // 简单网址校验
+        if (!urlInput.value.startsWith('http')) {
+            return alert("链接必须以 http:// 或 https:// 开头");
+        }
 
-            if (!urlInput.value) return alert("请输入你的链接");
-            myCurrentUrl = urlInput.value;
+        myCurrentUrl = urlInput.value;
+        mainBtn.disabled = true;
+        list.innerHTML = "<p>正在匹配最新问卷...</p>";
 
-            document.getElementById('mainBtn').disabled = true;
-            list.innerHTML = "<p>正在匹配...</p>";
+        try {
+            // 1. 请求后端获取任务
+            const res = await fetch('/exchange', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ url: myCurrentUrl })
+            });
 
-            try {
-                // 1. 获取任务
-                const res = await fetch('/exchange', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: myCurrentUrl })
-                });
-                const data = await res.json();
+            // 检查服务器是否响应正常
+            if (!res.ok) throw new Error("服务器响应异常，请稍后再试");
 
-                // 2. 渲染列表
-                list.innerHTML = "";
-                if (data.links.length === 0) {
-                    list.innerHTML = "<p>暂时没有其他问卷。</p>";
-                    return;
-                }
+            const data = await res.json();
 
-                data.links.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'task-item';
-                    div.innerHTML = `
-                            <div>🔗 问卷ID: ${item.id}</div>
-                            <div class="task-actions">
-                                <a href="${item.url}" target="_blank" onclick="showConfirm(this)" class="link-btn">
-                                    <button>👉 第一步：去填写</button>
-                                </a>
-                                <button class="btn-check" onclick="confirmTask(${item.id}, this)">✅ 第二步：我填完了，加分</button>
-                            </div>
-                        `;
-                    list.appendChild(div);
-                });
+            // --- 核心修复开始：防御性判断 ---
+            list.innerHTML = "";
 
-            } catch (e) {
-                alert("错误：" + e.message);
+            // A. 判断是否有报错信息
+            if (data.error) {
+                list.innerHTML = `<p style="color:red; background:#fff1f0; padding:10px; border-radius:5px;">
+                    ❌ 匹配失败：${data.error}<br>
+                    <small>提示：请确保你已在 Supabase 运行了最新的 SQL 代码。</small>
+                </p>`;
+                return;
             }
-        }
 
-        // 只有点击了链接，才显示确认按钮
-        function showConfirm(el) {
-            // 找到旁边的确认按钮，让它显示出来
-            const confirmBtn = el.nextElementSibling;
-            confirmBtn.style.display = 'inline-block';
-        }
-
-        async function confirmTask(targetId, btn) {
-            btn.innerText = "处理中...";
-            btn.disabled = true;
-
-            try {
-                await fetch('/confirm', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        my_url: myCurrentUrl,
-                        target_id: targetId
-                    })
-                });
-
-                btn.innerText = "已完成 (+1分)";
-                btn.style.background = "#ccc";
-
-            } catch (e) {
-                alert("失败，请重试");
-                btn.disabled = false;
+            // B. 判断返回的数据格式是否正确 (必须有 links 且必须是数组)
+            if (!data.links || !Array.isArray(data.links)) {
+                console.error("收到错误格式的数据:", data);
+                list.innerHTML = "<p style='color:orange'>⚠️ 数据格式异常，请查看浏览器 F12 控制台日志。</p>";
+                return;
             }
+
+            // C. 判断是否没有任务
+            if (data.links.length === 0) {
+                list.innerHTML = `<div style="padding:20px; color:#666;">
+                    <p>🎉 你的链接已收录！</p>
+                    <p>但目前池子里没有其他问卷，你是第一个。<br>请稍后回来，等别人上传后，你会优先出现在他们的列表里。</p>
+                </div>`;
+                return;
+            }
+
+            // D. 格式没问题，开始渲染列表
+            data.links.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'task-item';
+                div.innerHTML = `
+                    <div style="margin-bottom:8px;"><b>📄 问卷任务 #${item.id}</b></div>
+                    <div class="task-actions">
+                        <a href="${item.url}" target="_blank" onclick="showConfirm(this)">
+                            <button style="background:#0052d9;">第一步：打开问卷</button>
+                        </a>
+                        <button class="btn-check" onclick="confirmTask(${item.id}, this)" style="background:#2ba471; display:none;">第二步：已填完，领积分</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+            // --- 核心修复结束 ---
+
+        } catch (e) {
+            list.innerHTML = `<p style="color:red">系统错误: ${e.message}</p>`;
+        } finally {
+            mainBtn.disabled = false;
         }
-    </script>
+    }
+
+    // 只有点击了链接，才显示确认按钮
+    function showConfirm(el) {
+        // 找到 a 标签同级的那个确认按钮
+        const confirmBtn = el.parentElement.querySelector('.btn-check');
+        if (confirmBtn) confirmBtn.style.display = 'inline-block';
+    }
+
+    // 确认加分
+    async function confirmTask(targetId, btn) {
+        const originalText = btn.innerText;
+        btn.innerText = "处理中...";
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/confirm', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    my_url: myCurrentUrl, 
+                    target_id: targetId 
+                })
+            });
+
+            if (!res.ok) throw new Error("加分失败");
+
+            btn.innerText = "已完成 (+1分)";
+            btn.style.background = "#ccc";
+            btn.style.cursor = "default";
+            
+        } catch (e) {
+            alert("操作失败: " + e.message);
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    }
+</script>
 </body>
 </html>
+
